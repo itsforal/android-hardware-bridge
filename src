@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+"""
+Android Hardware Bridge Controller
+Author: Alireza
+Description: Automates the connection, root escalation, and execution of 
+ARM hardware binaries on legacy Android devices via ADB over TCP/IP.
+"""
+
+import subprocess
+import time
+import logging
+import sys
+
+# --- CONFIGURATION ---
+# Static IP assigned via Router MAC Binding
+DEVICE_IP = "192.168.1.174"  # Update this if network config changes
+ADB_PORT = "5555"
+SERVER_BIN_PATH = "/data/local/tmp/vhusbdarm"
+ADB_EXEC = "adb"
+
+# --- LOGGING SETUP ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHandler("bridge_system.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+def run_shell(command):
+    """Executes a shell command and returns the output."""
+    try:
+        result = subprocess.run(
+            command, 
+            capture_output=True, 
+            text=True, 
+            shell=True
+        )
+        if result.returncode != 0:
+            logging.debug(f"Command failed: {command}\nError: {result.stderr.strip()}")
+        return result.stdout.strip()
+    except Exception as e:
+        logging.error(f"Execution Error: {e}")
+        return None
+
+def check_device_connection():
+    """Verifies ADB connectivity."""
+    logging.info(f"Attempting connection to {DEVICE_IP}...")
+    run_shell(f"{ADB_EXEC} connect {DEVICE_IP}:{ADB_PORT}")
+    
+    devices = run_shell(f"{ADB_EXEC} devices")
+    if f"{DEVICE_IP}:{ADB_PORT}\tdevice" in devices:
+        logging.info("Device connected successfully.")
+        return True
+    else:
+        logging.error("Device unreachable. Check Static IP or Network/VPN settings.")
+        return False
+
+def manage_service():
+    """Manages the lifecycle of the binary service."""
+    # 1. Clean existing processes
+    check_process = run_shell(f"{ADB_EXEC} shell su -c 'ps | grep vhusbdarm'")
+    if "vhusbdarm" in str(check_process):
+        logging.warning("Existing instance found. Killing process to ensure clean state...")
+        run_shell(f"{ADB_EXEC} shell su -c 'pkill vhusbdarm'")
+        time.sleep(2)
+    
+    # 2. Start Service with Root
+    logging.info("Starting VirtualLink Server (Root)...")
+    # The '-b' flag runs the binary in background (daemon mode)
+    start_cmd = f"{ADB_EXEC} shell su -c '{SERVER_BIN_PATH} -b'"
+    run_shell(start_cmd)
+    time.sleep(1)
+
+    # 3. Validation
+    verify = run_shell(f"{ADB_EXEC} shell su -c 'ps | grep vhusbdarm'")
+    if "vhusbdarm" in str(verify):
+        logging.info("✅ SUCCESS: Hardware Bridge is Active and Running.")
+        logging.info(f"Process Details: {verify}")
+    else:
+        logging.critical("❌ FAILURE: Could not start the service. Check binary permissions (chmod +x).")
+
+if __name__ == "__main__":
+    print("--- Android Hardware Bridge Automation ---")
+    if check_device_connection():
+        manage_service()
+    else:
+        sys.exit(1)

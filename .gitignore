@@ -1,0 +1,13 @@
+# Ignore the proprietary binary
+bin/vhusbdarm
+
+# Ignore logs
+*.log
+bridge_system.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# System files
+.DS_Store

@@ -1,0 +1,2 @@
+# No external dependencies required (uses Python Standard Library)
+# System Requirements: ADB (Android Debug Bridge) installed and added to PATH.
