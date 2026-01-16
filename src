@@ -13,7 +13,7 @@ import sys
 
 # --- CONFIGURATION ---
 # Static IP assigned via Router MAC Binding
-DEVICE_IP = "192.168.1.174"  # Update this if network config changes
+DEVICE_IP = ""  # 
 ADB_PORT = "5555"
 SERVER_BIN_PATH = "/data/local/tmp/vhusbdarm"
 ADB_EXEC = "adb"
